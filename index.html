@@ -585,152 +585,113 @@ window.onload = function() {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PNS Breathing – 6 BPM</title>
+  <title>6 Breaths Per Minute Breathing Task</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    :root{
-      --bg:#0e1a2b;
-      --ink:#e6edf5;
-      --muted:#9fb3c8;
-      --accent:#ff4b6e;
-      --panel:#13233a;
-      --ring:#183354;
+    body {
+      font-family: Arial, sans-serif;
+      background: #1a1a2e;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
     }
-    html,body{
-      height:100%;
-      margin:0;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--ink);
+    .container {
+      background: #16213e;
+      padding: 2em 3em;
+      border-radius: 16px;
+      box-shadow: 0 4px 32px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 720px;
     }
-    .container{
-      max-width:920px;
-      margin:0 auto;
-      padding:28px 20px 60px;
-      text-align:center;
+    .breath-circle {
+      margin: 2em auto;
+      width: 120px;
+      height: 120px;
+      background: #0f3460;
+      border-radius: 50%;
+      transition: transform 5s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+      color: #e94560;
+      box-shadow: 0 0 30px #e94560a0;
+      user-select: none;
     }
-    h2{
-      font-size:40px;
-      margin:.2rem 0 1rem;
-      letter-spacing:.4px;
+    .timer {
+      font-size: 1.2em;
+      margin-top: 1em;
+      color: #e94560;
+      letter-spacing: 0.08em;
     }
-    .instructions{
-      font-size:20px;
-      line-height:1.5;
-      color:var(--muted);
-      margin:0 auto 18px;
-      max-width:860px;
+    .instructions {
+      margin-bottom: 1em;
+      font-size: 1.05em;
+      line-height: 1.6;
+      color:#e5e7eb;
     }
-    audio{
-      width:100%;
-      margin:16px auto 28px;
-      display:block;
-      filter:drop-shadow(0 4px 16px rgba(0,0,0,.35));
-    }
-    /* The breathing circle + glow */
-    .breath-circle{
-      width:220px;
-      height:220px;
-      margin:34px auto 18px;
-      border-radius:999px;
-      display:grid;
-      place-items:center;
-      font-size:34px;
+    button {
+      margin-top: 1em;
+      padding: 0.5em 2em;
+      font-size: 1.1em;
+      background: #e94560;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
       font-weight:700;
-      color:#ffdfec;
-      background:radial-gradient(circle at 50% 45%, #1a2f4d 0%, #12243d 70%, #0f1f35 100%);
-      box-shadow:
-        0 0 0 12px rgba(255, 75, 110, .12),
-        0 0 38px 12px rgba(255, 75, 110, .22),
-        inset 0 0 40px rgba(255,255,255,.06);
-      transition: transform .9s ease-in-out;
     }
-    /* soft pulsing halo that runs continuously */
-    .breath-circle::after{
-      content:"";
-      position:absolute;
-      width:260px;
-      height:260px;
-      border-radius:999px;
-      background:radial-gradient(circle, rgba(255,75,110,.28), transparent 60%);
-      filter:blur(18px);
-      z-index:-1;
-      animation:halo 3s ease-in-out infinite alternate;
-    }
-    @keyframes halo{
-      from{ opacity:.55; transform:scale(.98); }
-      to  { opacity:.85; transform:scale(1.03); }
-    }
-    .timer{
-      margin-top:10px;
-      font-size:28px;
-      letter-spacing:1px;
-      color:#ff9fbc;
-      text-shadow:0 0 18px rgba(255,75,110,.25);
-    }
-    button#startBtn{
-      margin-top:16px;
-      font-size:18px;
-      padding:12px 28px;
-      border:none; border-radius:12px;
-      font-weight:700; letter-spacing:.3px;
-      color:white; cursor:pointer;
-      background:linear-gradient(90deg,#ff4b6e,#ff7ba2);
-      box-shadow:0 10px 30px rgba(255,75,110,.28);
-      transition:transform .06s ease, filter .2s ease;
-    }
-    button#startBtn:active{ transform:translateY(1px); }
-    button#startBtn:disabled{ opacity:.6; cursor:not-allowed; filter:grayscale(.1); }
-
-    .timestamps{
-      margin-top:22px;
-      display:inline-block;
-      background:var(--panel);
-      color:#ffd5e3;
-      padding:.8em 1.2em;
-      border-radius:12px;
-      box-shadow:0 12px 34px rgba(0,0,0,.28), inset 0 0 0 1px var(--ring);
-      font-size:15px;
+    button:hover { background: #f76b8a; }
+    audio { margin-top: 1em; width: 100%; }
+    .timestamps {
+      margin-top: 1.5em;
+      color: #ffd700;
+      font-size: 1.05em;
+      background: #0f3460;
+      border-radius: 10px;
+      padding: 0.7em 1.2em;
+      display: inline-block;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Breathing Task: 6 Breaths Per Minute</h2>
-
     <div class="instructions">
-      Please listen to <b>the music </b> and follow the breathing guide below.<br>
+      Please listen to <b>"Weightless" by Marconi Union</b> and follow the breathing guide below.<br>
       Breathe in as the circle expands, and breathe out as it contracts.<br>
-      Try to take <b>6 breaths per minute</b> (inhale for 5&nbsp;s, exhale for 5&nbsp;s).
+      Target: <b>6 breaths/min</b> (inhale 5&nbsp;s, exhale 5&nbsp;s).
     </div>
-
     <audio controls>
       <source src="https://dn721609.ca.archive.org/0/items/marconi-union-weightless-528hz/Marconi%20Union%20Weightless%20%28528hz%29.mp3" type="audio/mp3">
       Your browser does not support the audio element.
     </audio>
-
     <div id="breathCircle" class="breath-circle">Ready?</div>
     <div class="timer" id="timer">10:00</div>
-    <button id="startBtn" onclick="startTask()">Start</button>
-
+    <button id="startBtn">Start</button>
     <div id="timestamps" class="timestamps" style="display:none"></div>
   </div>
 
   <script>
-    // --- BEGIN TIMESTAMP ---
+    // --- TIMESTAMPS ---
     let startTimestamp = Date.now();
     let endTimestamp = null;
     console.log("Breathing Task Start UNIX Timestamp:", startTimestamp);
 
-    // --- UI handles ---
+    // --- UI refs ---
     const breathCircle = document.getElementById('breathCircle');
     const timerDisplay = document.getElementById('timer');
     const startBtn = document.getElementById('startBtn');
     const audio = document.querySelector('audio');
 
-    // timing
-    const sessionLength = 600; // 10 min
-    const breathCycle = 10;    // 5 in + 5 out
+    // --- timings ---
+    const sessionLength = 600;  // 10 minutes
+    const breathCycle = 10;     // 5s inhale + 5s exhale
     let interval, timerInterval, timeLeft = sessionLength;
 
     function updateTimer(){
@@ -739,16 +700,15 @@ window.onload = function() {
       timerDisplay.textContent = `${m}:${s}`;
     }
 
-    function sendTimestampsToBackend(start, end){
-      // keep your local endpoint if needed; made inert here
-      // fetch('http://localhost:3000/api/timestamps', { ... })
-    }
-
     function showTimestamps(){
       const box = document.getElementById('timestamps');
       box.style.display = 'inline-block';
-      box.innerHTML = `<b>Session Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                       <b>Session End UNIX Timestamp:</b> ${endTimestamp}`;
+      box.innerHTML = `<b>Session Start UNIX Timestamp:</b> ${startTimestamp}<br><b>Session End UNIX Timestamp:</b> ${endTimestamp}`;
+    }
+
+    function sendTimestampsToBackend(start, end){
+      // optional: integrate with your endpoint
+      // fetch('http://localhost:3000/api/timestamps', {...})
     }
 
     function startTask(){
@@ -756,20 +716,19 @@ window.onload = function() {
       timeLeft = sessionLength;
       updateTimer();
       audio.currentTime = 0;
-      audio.play();
+      audio.play().catch(()=>{});
 
-      // kick off at "Inhale" with smooth scale
       breathCircle.textContent = 'Inhale';
       breathCircle.style.transform = 'scale(1.5)';
-      let cycleTick = 0;
+      let tick = 0;
 
       clearInterval(interval);
       interval = setInterval(() => {
-        cycleTick = (cycleTick + 1) % breathCycle;
-        if (cycleTick === 0){
+        tick = (tick + 1) % breathCycle;
+        if (tick === 0){
           breathCircle.textContent = 'Inhale';
           breathCircle.style.transform = 'scale(1.5)';
-        } else if (cycleTick === 5){
+        } else if (tick === 5){
           breathCircle.textContent = 'Exhale';
           breathCircle.style.transform = 'scale(1)';
         }
@@ -791,11 +750,13 @@ window.onload = function() {
           showTimestamps();
           sendTimestampsToBackend(startTimestamp, endTimestamp);
 
-          // advance to next task in parent
+          // Advance main flow
           try { parent.postMessage({type:'taskComplete', task:3}, '*'); } catch(e) {}
         }
       }, 1000);
     }
+
+    startBtn.addEventListener('click', startTask);
   </script>
 </body>
 </html>
