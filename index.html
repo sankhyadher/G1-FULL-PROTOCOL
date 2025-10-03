@@ -152,7 +152,7 @@
       function showTimestamps() {
         timestampsDiv.style.display = 'inline-block';
         timestampsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                                   <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
+                                 <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       function startTask() {
@@ -249,7 +249,7 @@
     <div class="instructions" id="instructions">
       <h2>Slot Machine Game Instructions</h2>
       <ul>
-                <li>You will play <b>5 rounds</b>. In each round, place your bet using casino chips, and choose a shape to bet on.</li>
+                <li>You will play <b>10 rounds</b>. In each round, place your bet using casino chips, and choose a shape to bet on.</li>
         <li><b>Higher the bet, higher the risk and potential reward.</b></li>
         <li>Try to climb the leaderboard by winning more!</li>
         <li>Press the <b>SPIN</b> button to play each round.</li>
@@ -310,7 +310,7 @@
   let trialNum = 0;
   let betAmount = 1;
   let betShape = 'sphere';
-  const TOTAL_TRIALS = 5;
+  const TOTAL_TRIALS = 10;
   let leaderboard = [];
 
   // --- Timestamp Variables ---
@@ -323,7 +323,7 @@
     leaderboard = [
       {name: "You", score: 100}
     ];
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 10; i++) {
       leaderboard.push({name: "Player " + i, score: 100 - i});
     }
     document.getElementById('instructions').style.display = 'none';
@@ -402,7 +402,6 @@
       // Only show win combos
       let combo = winningCombos[Math.floor(Math.random()*winningCombos.length)];
       renderReels(combo);
-      document.getElementById('gameMessage').innerHTML = `<span class="sparkle-text">WIN!</span>`;
       trialNum++;
       if (trialNum < TOTAL_TRIALS) {
         setTimeout(() => {
@@ -782,7 +781,7 @@
       const audio = document.querySelector('audio');
 
       // --- timings ---
-      const sessionLength = 600;  // 10 minutes
+      const sessionLength = 600;   // 10 minutes
       const breathCycle = 10;     // 5s inhale + 5s exhale
       let interval, timerInterval, timeLeft = sessionLength;
 
@@ -956,7 +955,7 @@
         let box = document.getElementById('timestamps');
         box.style.display = 'inline-block';
         box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                         <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
+                               <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       // --- TRAIL DEFINITIONS ---
@@ -1279,7 +1278,7 @@
       <button class="spin-btn" onclick="startGameFromInstructions()">Start Game</button>
     </div>
 
-    <div class="slot-machine-layout hidden" id="gameLayout">
+      <div class="slot-machine-layout hidden" id="gameLayout">
       <div id="game" class="slot-machine" style="position:relative;">
         <div class="center">
           <h2>Slot Machine Game</h2>
@@ -1335,6 +1334,7 @@
   const allSymbols = ['sphere', 'cube', 'pyramid', 'cylinder'];
   const noGainCombos = [['cube','cube','cube'], ['cylinder','cylinder','cylinder']];
   const lossSymbols = ['sphere', 'pyramid'];
+  const TOTAL_TRIALS = 50;
 
   // --- Timestamp Variables ---
   let startTimestamp = null;
@@ -1344,7 +1344,6 @@
     trials: [],
     totalWinnings: 0
   };
-  let trialOrder = [];
   let trialNum = 0;
   let betAmount = 1;
   let betShape = 'sphere';
@@ -1362,30 +1361,10 @@
     startGame();
   }
 
-  function generateTrialOrder() {
-    const TOTAL_TRIALS = 50;
-    const EDGE_LOSS = 4;
-    const MIDDLE = TOTAL_TRIALS - 2 * EDGE_LOSS;
-    const NO_GAIN_TRIALS = Math.round(MIDDLE * 0.3);
-    let order = [];
-    for(let i=0;i<EDGE_LOSS;i++) order.push('loss');
-    let middle = [];
-    for(let i=0;i<NO_GAIN_TRIALS;i++) middle.push('nogain');
-    while(middle.length < MIDDLE) middle.push('loss');
-    for(let i=middle.length-1;i>0;i--){
-      const j = Math.floor(Math.random()*(i+1));
-      [middle[i],middle[j]] = [middle[j],middle[i]];
-    }
-    order = order.concat(middle);
-    for(let i=0;i<EDGE_LOSS;i++) order.push('loss');
-    return order;
-  }
-
   function startGame() {
     startTimestamp = Date.now();
     console.log("Counterconditioning Task Start UNIX Timestamp:", startTimestamp);
 
-    trialOrder = generateTrialOrder();
     trialNum = 0;
     totalWinnings = 0;
     participant.trials = [];
@@ -1508,52 +1487,37 @@
 
     setTimeout(() => {
       clearInterval(anim);
-      
-      let scheduledOutcome = trialOrder[trialNum];
-      let outcome; // This will be the final, actual outcome
-
-      // ==========================================================
-      // ===== NEW LOGIC: Determine actual outcome based on bet =====
-      // ==========================================================
-      if (betShape === 'sphere' || betShape === 'pyramid') {
-          // If they bet on a purple shape, the outcome is whatever was scheduled.
-          outcome = scheduledOutcome;
-      } else {
-          // If they bet on a green shape (cube or cylinder), it's always a "no gain" result.
-          outcome = 'nogain';
-      }
-      // ==========================================================
-      // ================== END OF NEW LOGIC ======================
-      // ==========================================================
-
+      let outcome = '';
       let combo, message = '', isReward = 0, shapeWin = false, winAmount = 0;
 
-      if (outcome === 'nogain') {
-        combo = noGainCombos[Math.floor(Math.random()*noGainCombos.length)];
-        wallet += betAmount; // Refund
-        message = `<span class="nogain">No gain, no loss. Your bet is returned.</span>`;
-        isReward = 0;
-      } else { // This block is now only for 'loss' outcomes
-        // LOSS: only sphere and pyramid allowed
-        let possible = [];
-        for(let a of lossSymbols)
-          for(let b of lossSymbols)
-            for(let c of lossSymbols)
-              if (!(a==='cube'&&b==='cube'&&c==='cube') && !(a==='cylinder'&&b==='cylinder'&&c==='cylinder'))
-                possible.push([a,b,c]);
-        combo = possible[Math.floor(Math.random()*possible.length)];
-        totalWinnings -= betAmount;
-        participant.totalWinnings = totalWinnings;
-        message = `<span class="nogain">You lost! <b>👎</b> Better luck next time.</span>`;
-        isReward = 0;
-        showThumbsDown();
-        fadeScreen();
-        playLossSound();
+      if (lossSymbols.includes(betShape)) {
+          outcome = 'loss';
+          // LOSS: only sphere and pyramid allowed
+          let possible = [];
+          for(let a of lossSymbols)
+            for(let b of lossSymbols)
+              for(let c of lossSymbols)
+                if (!(a==='cube'&&b==='cube'&&c==='cube') && !(a==='cylinder'&&b==='cylinder'&&c==='cylinder'))
+                  possible.push([a,b,c]);
+          combo = possible[Math.floor(Math.random()*possible.length)];
+          totalWinnings -= betAmount;
+          participant.totalWinnings = totalWinnings;
+          message = `<span class="nogain">You lost! <b>👎</b> Better luck next time.</span>`;
+          isReward = 0;
+          showThumbsDown();
+          fadeScreen();
+          playLossSound();
+      } else {
+          outcome = 'nogain';
+          combo = noGainCombos[Math.floor(Math.random()*noGainCombos.length)];
+          wallet += betAmount; // Refund
+          message = `<span class="nogain">No gain, no loss. Your bet is returned.</span>`;
+          isReward = 0;
       }
       renderReels(combo);
 
       if (betShape && combo.includes(betShape)) shapeWin = true;
-          document.getElementById('gameMessage').innerHTML = message;
+        document.getElementById('gameMessage').innerHTML = message;
 
       let spinEnd = Date.now();
       participant.trials.push({
@@ -1562,7 +1526,7 @@
         betShape: betShape,
         shapeWin: shapeWin,
         combo: combo.join(''),
-        outcome: outcome, // Log the final, actual outcome
+        outcome: outcome,
         loss: outcome === "loss" ? betAmount : 0,
         totalWinnings: totalWinnings,
         wallet: wallet,
@@ -1573,7 +1537,7 @@
       renderLeaderboard();
 
       trialNum++;
-      if (trialNum < trialOrder.length && wallet > 0) {
+      if (trialNum < TOTAL_TRIALS && wallet > 0) {
         setTimeout(() => {
           updateGameUI();
           renderLeaderboard();
@@ -1605,76 +1569,31 @@
   <html lang="en">
   <head>
     <meta charset="UTF-8">
-    <title>Cold Pressor Task</title>
+    <title>Cold Pressor Test</title>
     <style>
-      body { 
-        font-family: Arial, sans-serif; 
-        background: #19335c; 
-        color: #fff; 
-        display: flex; 
-        flex-direction: column; 
-        align-items: center; 
-        justify-content: center; 
-        min-height: 100vh; 
-        margin: 0; 
-      }
-      .container {
-        background: #355c7d;
-        padding: 2em 3em;
-        border-radius: 16px;
-        box-shadow: 0 4px 32px rgba(0,0,0,0.2);
-        text-align: center;
-      }
-      .timer {
-        font-size: 2em;
-        margin: 1em 0;
-        letter-spacing: 0.1em;
-        color: #ffd700;
-      }
-      button {
-        padding: 0.7em 2.2em;
-        font-size: 1.2em;
-        background: #ffd700;
-        color: #19335c;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        margin-top: 1em;
-        font-weight: bold;
-        transition: background 0.2s;
-      }
-      button:disabled {
-        background: #aaa;
-        color: #666;
-        cursor: default;
-      }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #2a3a5c;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
+      body { font-family: Arial, sans-serif; background: #2a3a5c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+      .container { background: #19335c; padding: 2em 3em; border-radius: 16px; box-shadow: 0 4px 32px rgba(0,0,0,0.2); text-align: center; }
+      .timer { font-size: 2em; margin: 1em 0; letter-spacing: 0.1em; color: #ff6347; /* Tomato color for stress */ }
+      button { padding: 0.7em 2.2em; font-size: 1.2em; background: #ff6347; color: #19335c; border: none; border-radius: 8px; cursor: pointer; margin-top: 1em; font-weight: bold; transition: background 0.2s; }
+      button:disabled { background: #aaa; color: #666; cursor: default; }
+      .timestamps { margin-top: 1.5em; color: #ff6347; font-size: 1.1em; background: #2a3a5c; border-radius: 10px; padding: 0.7em 1.2em; display: inline-block; }
     </style>
   </head>
   <body>
     <div class="container">
-      <h2>Cold Pressor Task</h2>
+      <h2>SNS Task: Cold Pressor Test</h2>
       <div id="instructions">
         <p>
           <b>Instructions:</b><br>
-          When you are ready, click <b>Start</b> and immerse your hand in ice-cold water.<br>
-          Keep your hand in the water until the timer reaches zero (2 minutes).<br>
-          Remove your hand if you feel too uncomfortable.<br>
-          Press <b>Start</b> to begin.
+          Please submerge your <b>non-dominant hand</b> in the cold water up to your wrist.<br>
+          Keep it submerged for the entire 2-minute duration.<br>
+          Press <b>Start</b> to begin the timer.
         </p>
       </div>
       <div class="timer" id="timer">02:00</div>
       <button id="startBtn" onclick="startTask()">Start</button>
       <div id="doneMsg" style="display:none; margin-top:1em;">
-        <b>Task complete! You may remove your hand from the water.</b>
+        <b>Task complete! You may remove your hand. The next task will begin shortly.</b>
       </div>
       <div id="timestamps" class="timestamps" style="display:none"></div>
     </div>
@@ -1684,7 +1603,7 @@
       let doneMsg = document.getElementById('doneMsg');
       let timestampsDiv = document.getElementById('timestamps');
       let interval;
-      let duration = 2 * 60; // 2 minutes in seconds
+      let duration = 2 * 60; // 2 minutes
       let timeLeft = duration;
       let startTimestamp = null;
       let endTimestamp = null;
@@ -1697,8 +1616,7 @@
 
       function showTimestamps() {
         timestampsDiv.style.display = 'inline-block';
-        timestampsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                                   <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
+        timestampsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br><b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       function startTask() {
@@ -1719,8 +1637,11 @@
             showTimestamps();
             startBtn.disabled = true;
             
-            // >>> ADVANCE FLOW <<<
-            try { parent.postMessage({type:'taskComplete', task:6}, '*'); } catch(e) {}
+            // Advance main flow after a short delay
+            setTimeout(() => {
+              // This task is at index 6 in the new array
+              try { parent.postMessage({type:'taskComplete', task:6}, '*'); } catch(e) {}
+            }, 2000);
           }
         }, 1000);
       }
@@ -1784,7 +1705,7 @@
             <input type="range" min="1" max="9" value="5" class="affective-slider" id="valenceSlider">
             <img src="https://em-content.zobj.net/thumbs/240/apple/354/grinning-face_1f600.png" alt="Happy Emoji" width="42" height="42">
           </div>
-          <div class="affective-slider-caption">“How pleasant or unpleasant does the memory of the slot machine game feel to you right now?”</div>
+          <div class="affective-slider-caption">“Rate the level of pleasantness or unpleasantness while playing the game by using the slider below. The scale ranges from extremely unpleasant (represented by the frowning figure on the far left) to extremely pleasant (represented by the smiling figure on the far right). The middle of the scale represents a neutral feeling." </div>
         </div>
         <div class="affective-slider-block">
           <div class="affective-slider-label">
@@ -1792,7 +1713,7 @@
             <input type="range" min="1" max="9" value="5" class="affective-slider" id="arousalSlider">
             <img src="https://img.icons8.com/emoji/48/000000/astonished-face.png" class="affective-slider-face" alt="High arousal">
           </div>
-          <div class="affective-slider-caption">“How emotionally activated or calm do you feel while recalling the memory of the slot machine game?”</div>
+          <div class="affective-slider-caption">“How intense or calm do you feel while playing the slot machine game by using the slider below. The scale ranges from  a very low level of arousal (feeling completely calm, relaxed, or sleepy) to very high level of arousal (feeling excited, agitated, frenzied, or wide awake). ”</div>
         </div>
         <button class="submit-btn" type="submit">Continue</button>
       </div>
@@ -1856,7 +1777,7 @@
     let box = document.getElementById('timestamps');
     box.style.display = 'inline-block';
     box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${participant.timestamps.taskStart}<br>
-                     <b>Task End UNIX Timestamp:</b> ${participant.timestamps.taskEnd}`;
+                                 <b>Task End UNIX Timestamp:</b> ${participant.timestamps.taskEnd}`;
   }
 
   // --- Participant Info ---
@@ -2020,8 +1941,8 @@
       { id: 'task3-html', label: '3. PNS TASK (6 BPM Breathing)' },
       { id: 'task4-html', label: '4. TRAIL MAKING TASK' },
       { id: 'task5-html', label: '5. COUNTERCONDITIONING TASK' },
-      { id: 'task6-html', label: '6. SNS TASK (Cold Pressor)' },
-      { id: 'task7-html', label: '7. POST-GAME QUESTIONNAIRE' }
+      { id: 'task6-html', label: '6. SNS TASK (Cold Pressor Test)' }, // <-- NEW TASK ADDED
+      { id: 'task7-html', label: '7. POST-GAME QUESTIONNAIRE' } // <-- RE-NUMBERED
     ];
 
     const frame = document.getElementById('stage');
