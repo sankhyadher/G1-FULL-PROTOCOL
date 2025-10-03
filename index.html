@@ -310,7 +310,7 @@
   let trialNum = 0;
   let betAmount = 1;
   let betShape = 'sphere';
-  const TOTAL_TRIALS = 10;
+  const TOTAL_TRIALS = 5;
   let leaderboard = [];
 
   // --- Timestamp Variables ---
@@ -323,7 +323,7 @@
     leaderboard = [
       {name: "You", score: 100}
     ];
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 5; i++) {
       leaderboard.push({name: "Player " + i, score: 100 - i});
     }
     document.getElementById('instructions').style.display = 'none';
@@ -402,6 +402,7 @@
       // Only show win combos
       let combo = winningCombos[Math.floor(Math.random()*winningCombos.length)];
       renderReels(combo);
+      document.getElementById('gameMessage').innerHTML = `<span class="sparkle-text">WIN!</span>`;
       trialNum++;
       if (trialNum < TOTAL_TRIALS) {
         setTimeout(() => {
@@ -1278,7 +1279,7 @@
       <button class="spin-btn" onclick="startGameFromInstructions()">Start Game</button>
     </div>
 
-      <div class="slot-machine-layout hidden" id="gameLayout">
+    <div class="slot-machine-layout hidden" id="gameLayout">
       <div id="game" class="slot-machine" style="position:relative;">
         <div class="center">
           <h2>Slot Machine Game</h2>
@@ -1507,7 +1508,24 @@
 
     setTimeout(() => {
       clearInterval(anim);
-      let outcome = trialOrder[trialNum];
+      
+      let scheduledOutcome = trialOrder[trialNum];
+      let outcome; // This will be the final, actual outcome
+
+      // ==========================================================
+      // ===== NEW LOGIC: Determine actual outcome based on bet =====
+      // ==========================================================
+      if (betShape === 'sphere' || betShape === 'pyramid') {
+          // If they bet on a purple shape, the outcome is whatever was scheduled.
+          outcome = scheduledOutcome;
+      } else {
+          // If they bet on a green shape (cube or cylinder), it's always a "no gain" result.
+          outcome = 'nogain';
+      }
+      // ==========================================================
+      // ================== END OF NEW LOGIC ======================
+      // ==========================================================
+
       let combo, message = '', isReward = 0, shapeWin = false, winAmount = 0;
 
       if (outcome === 'nogain') {
@@ -1515,7 +1533,7 @@
         wallet += betAmount; // Refund
         message = `<span class="nogain">No gain, no loss. Your bet is returned.</span>`;
         isReward = 0;
-      } else {
+      } else { // This block is now only for 'loss' outcomes
         // LOSS: only sphere and pyramid allowed
         let possible = [];
         for(let a of lossSymbols)
@@ -1544,7 +1562,7 @@
         betShape: betShape,
         shapeWin: shapeWin,
         combo: combo.join(''),
-        outcome: outcome,
+        outcome: outcome, // Log the final, actual outcome
         loss: outcome === "loss" ? betAmount : 0,
         totalWinnings: totalWinnings,
         wallet: wallet,
@@ -1766,7 +1784,7 @@
             <input type="range" min="1" max="9" value="5" class="affective-slider" id="valenceSlider">
             <img src="https://em-content.zobj.net/thumbs/240/apple/354/grinning-face_1f600.png" alt="Happy Emoji" width="42" height="42">
           </div>
-          <div class="affective-slider-caption">“Rate the level of pleasantness or unpleasantness while playing the game by using the slider below. The scale ranges from extremely unpleasant (represented by the frowning figure on the far left) to extremely pleasant (represented by the smiling figure on the far right). The middle of the scale represents a neutral feeling." </div>
+          <div class="affective-slider-caption">“How pleasant or unpleasant does the memory of the slot machine game feel to you right now?”</div>
         </div>
         <div class="affective-slider-block">
           <div class="affective-slider-label">
@@ -1774,7 +1792,7 @@
             <input type="range" min="1" max="9" value="5" class="affective-slider" id="arousalSlider">
             <img src="https://img.icons8.com/emoji/48/000000/astonished-face.png" class="affective-slider-face" alt="High arousal">
           </div>
-          <div class="affective-slider-caption">“How intense or calm do you feel while playing the slot machine game by using the slider below. The scale ranges from  a very low level of arousal (feeling completely calm, relaxed, or sleepy) to very high level of arousal (feeling excited, agitated, frenzied, or wide awake). ”</div>
+          <div class="affective-slider-caption">“How emotionally activated or calm do you feel while recalling the memory of the slot machine game?”</div>
         </div>
         <button class="submit-btn" type="submit">Continue</button>
       </div>
