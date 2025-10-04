@@ -47,6 +47,7 @@
       <div class="controls">
         <div class="progress"><div id="bar" class="bar"></div></div>
         <div id="status" class="status">Ready. Click “Start Flow” to begin with the <b>Baseline Recording</b>.</div>
+        <button id="downloadBtn" class="btn" style="background: #6b7280;">Download Data</button>
         <button id="startBtn" class="btn">Start Flow</button>
       </div>
     </div>
@@ -103,15 +104,6 @@
         color: #666;
         cursor: default;
       }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #2a3a5c;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
     </style>
   </head>
   <body>
@@ -130,13 +122,11 @@
       <div id="doneMsg" style="display:none; margin-top:1em;">
         <b>Baseline recording complete! The next task will begin shortly.</b>
       </div>
-      <div id="timestamps" class="timestamps" style="display:none"></div>
     </div>
     <script>
       let timerDisplay = document.getElementById('timer');
       let startBtn = document.getElementById('startBtn');
       let doneMsg = document.getElementById('doneMsg');
-      let timestampsDiv = document.getElementById('timestamps');
       let interval;
       let duration = 2 * 60; // 2 minutes in seconds
       let timeLeft = duration;
@@ -147,12 +137,6 @@
         let min = String(Math.floor(timeLeft / 60)).padStart(2, '0');
         let sec = String(timeLeft % 60).padStart(2, '0');
         timerDisplay.textContent = `${min}:${sec}`;
-      }
-
-      function showTimestamps() {
-        timestampsDiv.style.display = 'inline-block';
-        timestampsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                                 <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       function startTask() {
@@ -170,12 +154,12 @@
             endTimestamp = Date.now();
             console.log("Baseline Task End UNIX Timestamp:", endTimestamp);
             doneMsg.style.display = 'block';
-            showTimestamps();
             startBtn.disabled = true;
             
-            // Advance main flow after a short delay
+            // Send data back to parent orchestrator
+            const taskData = { startTimestamp, endTimestamp };
             setTimeout(() => {
-                try { parent.postMessage({type:'taskComplete', task:0}, '*'); } catch(e) {}
+                try { parent.postMessage({type:'taskComplete', task:0, data: taskData }, '*'); } catch(e) {}
             }, 2000);
           }
         }, 1000);
@@ -295,7 +279,6 @@
     <div class="center" id="thankYou" style="display:none;">
       <h2>Task Complete!</h2>
       <p>The next task will begin shortly.</p>
-      <div id="timestampSummary" style="margin-top:20px; color:#ffd700; font-size:1.1em; background: #1a1203; padding:1em; border-radius:10px; display:inline-block;"></div>
     </div>
   </div>
   <script>
@@ -312,6 +295,7 @@
   let betShape = 'sphere';
   const TOTAL_TRIALS = 10;
   let leaderboard = [];
+  let trialData = [];
 
   // --- Timestamp Variables ---
   let startTimestamp = null;
@@ -322,6 +306,7 @@
     console.log("Task 1 (Retrieval) Start UNIX Timestamp:", startTimestamp);
 
     trialNum = 0;
+    trialData = [];
     leaderboard = [
       {name: "You", score: 100}
     ];
@@ -391,6 +376,7 @@
 
   function spin() {
     document.getElementById('spinBtn').disabled = true;
+    let spinStartTime = Date.now();
     let anim = setInterval(() => {
       renderReels([
         allSymbols[Math.floor(Math.random()*allSymbols.length)],
@@ -401,9 +387,18 @@
 
     setTimeout(() => {
       clearInterval(anim);
-      // Only show win combos
       let combo = winningCombos[Math.floor(Math.random()*winningCombos.length)];
       renderReels(combo);
+
+      trialData.push({
+          trial: trialNum + 1,
+          betAmount,
+          betShape,
+          combo: combo.join(','),
+          spinStartTime,
+          spinEndTime: Date.now()
+      });
+
       trialNum++;
       if (trialNum < TOTAL_TRIALS) {
         setTimeout(() => {
@@ -415,13 +410,10 @@
           endTimestamp = Date.now();
           console.log("Task 1 (Retrieval) End UNIX Timestamp:", endTimestamp);
           document.getElementById('gameLayout').style.display = 'none';
-          document.getElementById('thankYou').style.display = '';
-          // Show timestamps on thank you screen
-          document.getElementById('timestampSummary').innerHTML =
-            `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>` +
-            `<b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
-          // >>> ADVANCE FLOW <<<
-          try { parent.postMessage({type:'taskComplete', task:1}, '*'); } catch(e) {}
+          document.getElementById('thankYou').style.display = 'block';
+
+          const taskData = { startTimestamp, endTimestamp, trials: trialData };
+          try { parent.postMessage({type:'taskComplete', task:1, data: taskData}, '*'); } catch(e) {}
         }, 1400);
       }
     }, 1100);
@@ -451,15 +443,6 @@
       .marked { background: #aaf; }
       #progress { margin: 20px; }
       #result, #wordResult { font-size: 20px; color: green; margin: 20px; }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #0f3460;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
       #wordTask { margin-top: 30px; }
       #fragmentBox { font-size: 20px; margin: 20px; }
       #completionInput { font-size: 18px; padding: 6px; }
@@ -489,18 +472,18 @@
       <div id="wordResult"></div>
     </div>
 
-    <div id="timestamps" class="timestamps" style="display:none"></div>
-
     <script>
-      // --- TIMESTAMPS ---
-      let startTimestamp = null, endTimestamp = null, wordStart = null, wordEnd = null;
+      // --- TIMESTAMPS & DATA ---
+      let startTimestamp = null, digitEndTimestamp = null, wordStartTimestamp = null, wordEndTimestamp = null;
+      let digitData = { found: 0, total: 0 };
+      let wordData = { responses: [] };
 
       // --- Digit Cancellation Variables ---
       const TOTAL_TIME = 5 * 60; // 5 minutes in seconds
       const GRID_TIME = 30; // each grid lasts 30 seconds
       const GRIDS = TOTAL_TIME / GRID_TIME; // 10 grids
       const ROWS = 10, COLS = 10;
-      let timeLeft = TOTAL_TIME, gridCount = 0, foundTotal = 0, targetTotal = 0;
+      let timeLeft = TOTAL_TIME, gridCount = 0;
       let timerInterval, gridInterval, currentTarget = 0;
 
       // --- Word Fragment Variables ---
@@ -509,7 +492,7 @@
       ];
       const FRAG_TIME = 30; // 30s per fragment
       const FRAG_COUNT = FRAGMENTS.length;
-      let fragmentIdx = 0, wordTimeLeft = FRAG_COUNT * FRAG_TIME, responses = [];
+      let fragmentIdx = 0, wordTimeLeft = FRAG_COUNT * FRAG_TIME;
       let timerWordInterval, fragmentInterval;
       let submittedCurrentFragment = false;
 
@@ -541,33 +524,24 @@
             if (!cell.classList.contains('marked')) {
               if (cell.dataset.digit == currentTarget) {
                 cell.classList.add('marked');
-                foundTotal++;
+                digitData.found++;
               }
             }
           });
           grid.appendChild(cell);
         }
-        targetTotal += gridTargets;
+        digitData.total += gridTargets;
       }
 
-      function showTimestamps() {
-        let box = document.getElementById('timestamps');
-        box.style.display = 'inline-block';
-        box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-          <b>Digit Cancellation End:</b> ${endTimestamp}<br>
-          <b>Word Fragment Start:</b> ${wordStart}<br>
-          <b>Word Fragment End:</b> ${wordEnd}`;
-      }
-
-      function endTask() {
+      function endDigitTask() {
         clearInterval(timerInterval);
         clearInterval(gridInterval);
         document.getElementById('result').textContent =
-          `Task complete! You found ${foundTotal} out of ${targetTotal} target digits.`;
+          `Task complete! You found ${digitData.found} out of ${digitData.total} target digits.`;
         document.getElementById('grid').innerHTML = '';
-        endTimestamp = Date.now();
-        console.log("Digit Cancellation Part End UNIX Timestamp:", endTimestamp);
-        setTimeout(startWordFragmentTask, 1200);
+        digitEndTimestamp = Date.now();
+        console.log("Digit Cancellation Part End UNIX Timestamp:", digitEndTimestamp);
+        setTimeout(startWordFragmentTask, 2000);
       }
 
       function startTask() {
@@ -577,7 +551,7 @@
         timerInterval = setInterval(() => {
           timeLeft--;
           updateTimer();
-          if (timeLeft <= 0) endTask();
+          if (timeLeft <= 0) endDigitTask();
         }, 1000);
         nextGrid();
         gridInterval = setInterval(() => { if (timeLeft > 0) nextGrid(); }, GRID_TIME * 1000);
@@ -608,9 +582,9 @@
       function submitCurrentWord() {
         if (!submittedCurrentFragment) {
           let response = document.getElementById('completionInput').value.trim();
-          responses[fragmentIdx] = response ? response : "---";
+          wordData.responses[fragmentIdx] = { fragment: FRAGMENTS[fragmentIdx], response: response ? response : "---" };
           document.getElementById('wordResult').textContent =
-            `Response saved: ${responses[fragmentIdx]}`;
+            `Response saved: ${response || '---'}`;
           submittedCurrentFragment = true;
           enableInput(false); // lock after submit
         }
@@ -633,10 +607,11 @@
         document.getElementById('grid').style.display = 'none';
         document.getElementById('progress').style.display = 'none';
         document.getElementById('wordTask').style.display = 'block';
-        wordStart = Date.now();
-        console.log("Word Fragment Part Start UNIX Timestamp:", wordStart);
+        wordStartTimestamp = Date.now();
+        console.log("Word Fragment Part Start UNIX Timestamp:", wordStartTimestamp);
         wordTimeLeft = FRAG_COUNT * FRAG_TIME;
-        fragmentIdx = 0; responses = [];
+        fragmentIdx = 0;
+        wordData.responses = [];
         showFragment(fragmentIdx);
         updateWordTimer();
         timerWordInterval = setInterval(() => {
@@ -653,19 +628,24 @@
         clearInterval(timerWordInterval);
         clearInterval(fragmentInterval);
         submitCurrentWord();
-        wordEnd = Date.now();
-        console.log("Task 2 (Digit/Word) End UNIX Timestamp:", wordEnd);
+        wordEndTimestamp = Date.now();
+        console.log("Task 2 (Digit/Word) End UNIX Timestamp:", wordEndTimestamp);
         document.getElementById('fragmentBox').innerHTML = '';
         document.getElementById('completionInput').style.display = 'none';
         document.getElementById('submitWord').style.display = 'none';
         document.getElementById('wordProgress').textContent = '';
         document.getElementById('wordResult').innerHTML =
-          'Word Fragment Task complete!<br>Your responses:<br>' +
-          responses.map((r,i)=>`${FRAGMENTS[i]} → <b>${r}</b>`).join("<br>");
-        showTimestamps();
-
-        // >>> Advance the main flow to Task 3
-        try { parent.postMessage({type:'taskComplete', task:2}, '*'); } catch(e) {}
+          'Word Fragment Task complete!';
+        
+        const taskData = {
+            startTimestamp,
+            digitCancellationEnd: digitEndTimestamp,
+            wordFragmentStart: wordStartTimestamp,
+            endTimestamp: wordEndTimestamp,
+            digitCancellationData: digitData,
+            wordFragmentData: wordData
+        };
+        try { parent.postMessage({type:'taskComplete', task:2, data: taskData}, '*'); } catch(e) {}
       }
 
       document.getElementById('submitWord').onclick = submitCurrentWord;
@@ -747,15 +727,6 @@
       }
       button:hover { background: #f76b8a; }
       audio { margin-top: 1em; width: 100%; }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.05em;
-        background: #0f3460;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
     </style>
   </head>
   <body>
@@ -773,7 +744,6 @@
       <div id="breathCircle" class="breath-circle">Ready?</div>
       <div class="timer" id="timer">10:00</div>
       <button id="startBtn">Start</button>
-      <div id="timestamps" class="timestamps" style="display:none"></div>
     </div>
 
     <script>
@@ -796,12 +766,6 @@
         const m = String(Math.floor(timeLeft/60)).padStart(2,'0');
         const s = String(timeLeft%60).padStart(2,'0');
         timerDisplay.textContent = `${m}:${s}`;
-      }
-
-      function showTimestamps(){
-        const box = document.getElementById('timestamps');
-        box.style.display = 'inline-block';
-        box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br><b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       function startTask(){
@@ -843,10 +807,9 @@
 
             endTimestamp = Date.now();
             console.log("Breathing Task End UNIX Timestamp:", endTimestamp);
-            showTimestamps();
-
-            // Advance main flow
-            try { parent.postMessage({type:'taskComplete', task:3}, '*'); } catch(e) {}
+            
+            const taskData = { startTimestamp, endTimestamp };
+            try { parent.postMessage({type:'taskComplete', task:3, data: taskData }, '*'); } catch(e) {}
           }
         }, 1000);
       }
@@ -917,15 +880,6 @@
         margin-top: 30px;
         font-weight: bold;
       }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #0f3460;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
       button.start-btn {
         font-size: 1.1rem;
         padding: 8px 28px;
@@ -944,25 +898,18 @@
   <body>
     <h1>Trail Making Task</h1>
     <div id="instructions"></div>
-    <div id="total-timer">Total Time Left: 05:00</div>
+    <div id="total-timer">Total Time Left: 10:00</div>
     <div id="timer">Round Time: 0.00 s</div>
     <div id="grid"></div>
     <div id="result"></div>
     <div id="history"></div>
     <div id="end-message"></div>
-    <div id="timestamps" class="timestamps" style="display:none"></div>
 
     <script>
-      // --- TIMESTAMP LOGIC ---
+      // --- TIMESTAMP & DATA LOGIC ---
       let startTimestamp = null;
       let endTimestamp = null;
-
-      function showTimestamps() {
-        let box = document.getElementById('timestamps');
-        box.style.display = 'inline-block';
-        box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                                 <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
-      }
+      let allTrailData = [];
 
       // --- TRAIL DEFINITIONS ---
       const trailTypes = [
@@ -1026,9 +973,8 @@
       ];
 
       // --- STATE ---
-      const TOTAL_PLAYTIME = 5 * 60 * 1000; // 5 minutes in ms
+      const TOTAL_PLAYTIME = 10 * 60 * 1000; // 10 minutes in ms
       let currentTrail = 0;
-      let allTimes = Array(trailTypes.length).fill(null);
       let started = false, startTime, timerInterval;
       let totalStartTime, totalTimerInterval;
       let timeUp = false;
@@ -1056,7 +1002,6 @@
           endAll();
           return;
         }
-        // Show instructions for the next trail
         document.getElementById('instructions').innerHTML = `
           <b>Trail ${currentTrail+1} of ${trailTypes.length}: ${trailTypes[currentTrail].label}</b><br>
           ${trailTypes[currentTrail].instructions}<br>
@@ -1132,9 +1077,14 @@
 
       function endTask() {
         clearInterval(timerInterval);
-        let totalTime = ((Date.now() - startTime)/1000).toFixed(2);
-        document.getElementById('result').textContent = `Finished! Total time: ${totalTime} seconds.`;
-        allTimes[currentTrail] = totalTime;
+        let totalTime = ((Date.now() - startTime)/1000);
+        document.getElementById('result').textContent = `Finished! Total time: ${totalTime.toFixed(2)} seconds.`;
+        
+        allTrailData.push({
+            trailLabel: trailTypes[currentTrail].label,
+            completionTimeSeconds: totalTime
+        });
+
         showHistory();
         document.querySelectorAll('.circle-btn:not(.correct)').forEach(btn => btn.disabled = true);
         setTimeout(() => {
@@ -1145,10 +1095,8 @@
 
       function showHistory() {
         let html = `<b>Completed Trails:</b><ul>`;
-        allTimes.forEach((t, i) => {
-          if (t !== null) {
-            html += `<li>${trailTypes[i].label}: <span style="color:green">${t} s</span></li>`;
-          }
+        allTrailData.forEach(trail => {
+            html += `<li>${trail.trailLabel}: <span style="color:green">${trail.completionTimeSeconds.toFixed(2)} s</span></li>`;
         });
         html += `</ul>`;
         document.getElementById('history').innerHTML = html;
@@ -1159,29 +1107,19 @@
         clearInterval(totalTimerInterval);
         document.getElementById('grid').innerHTML = '';
         document.getElementById('result').textContent = '';
-        let summary = `<div id="end-message">Task Complete! The next task will begin shortly.<br><br>`;
-        allTimes.forEach((t, i) => {
-          if (t !== null)
-            summary += `${trailTypes[i].label}: <b>${t} s</b><br>`;
-        });
-        summary += `</div>`;
+        let summary = `<div id="end-message">Task Complete! The next task will begin shortly.</div>`;
         document.getElementById('end-message').innerHTML = summary;
         document.getElementById('total-timer').textContent = 'Total Time Left: 0:00';
 
-        // --- END TIMESTAMP ---
         endTimestamp = Date.now();
         console.log("Trail Making Task End UNIX Timestamp:", endTimestamp);
-
-        // Show timestamps on page
-        showTimestamps();
-
-        // >>> ADVANCE FLOW <<<
-        try { parent.postMessage({type:'taskComplete', task:4}, '*'); } catch(e) {}
+        
+        const taskData = { startTimestamp, endTimestamp, trails: allTrailData };
+        try { parent.postMessage({type:'taskComplete', task:4, data: taskData }, '*'); } catch(e) {}
       }
 
       // --- INIT ---
       startNextTrail();
-      // Expose startTrail for button
       window.startTrail = startTrail;
     </script>
   </body>
@@ -1261,15 +1199,6 @@
         transition: opacity 0.7s;
       }
       .fade-screen.active { opacity: 1; }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #1a1203;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
     </style>
   </head>
   <body>
@@ -1330,7 +1259,6 @@
     <div class="center hidden" id="thankYou">
         <h2>Task Complete!</h2>
         <p>The next task will begin shortly.</p>
-        <div id="timestamps" class="timestamps" style="display:none"></div>
     </div>
 
   </div>
@@ -1346,24 +1274,17 @@
   const lossSymbols = ['sphere', 'pyramid'];
   const TOTAL_TRIALS = 50;
 
-  // --- Timestamp Variables ---
+  // --- Timestamp & Data Variables ---
   let startTimestamp = null;
   let endTimestamp = null;
+  let participantData = { trials: [], totalWinnings: 0 };
 
-  let participant = {
-    trials: [],
-    totalWinnings: 0
-  };
   let trialNum = 0;
   let betAmount = 1;
   let betShape = 'sphere';
   let leaderboard = [];
   let totalWinnings = 0;
   let wallet = 2000;
-
-  function showInstructions() {
-    document.getElementById('instructions').classList.remove('hidden');
-  }
 
   function startGameFromInstructions() {
     document.getElementById('instructions').classList.add('hidden');
@@ -1377,8 +1298,8 @@
 
     trialNum = 0;
     totalWinnings = 0;
-    participant.trials = [];
-    participant.totalWinnings = 0;
+    participantData.trials = [];
+    participantData.totalWinnings = 0;
     wallet = 2000;
     leaderboard = Array.from({length: 15}, (_,i) => ({
       name: "Player " + (i+1), score: Math.floor(Math.random()*200+50)
@@ -1446,7 +1367,7 @@
   }
   function renderLeaderboard() {
     let player = leaderboard.find(l => l.name === "You");
-    let losses = participant.trials.filter(t => t.outcome === 'loss').length;
+    let losses = participantData.trials.filter(t => t.outcome === 'loss').length;
     leaderboard = leaderboard.filter(l => l !== player);
     let newPos = Math.min(losses, leaderboard.length);
     leaderboard.splice(newPos, 0, player);
@@ -1498,22 +1419,18 @@
     setTimeout(() => {
       clearInterval(anim);
       let outcome = '';
-      let combo, message = '', isReward = 0, shapeWin = false, winAmount = 0;
+      let combo, message = '', shapeWin = false;
 
       if (lossSymbols.includes(betShape)) {
           outcome = 'loss';
-          // LOSS: only sphere and pyramid allowed
           let possible = [];
-          for(let a of lossSymbols)
-            for(let b of lossSymbols)
-              for(let c of lossSymbols)
-                if (!(a==='cube'&&b==='cube'&&c==='cube') && !(a==='cylinder'&&b==='cylinder'&&c==='cylinder'))
-                  possible.push([a,b,c]);
+          for(let a of lossSymbols) for(let b of lossSymbols) for(let c of lossSymbols)
+            if (!(a==='cube'&&b==='cube'&&c==='cube') && !(a==='cylinder'&&b==='cylinder'&&c==='cylinder'))
+              possible.push([a,b,c]);
           combo = possible[Math.floor(Math.random()*possible.length)];
           totalWinnings -= betAmount;
-          participant.totalWinnings = totalWinnings;
+          participantData.totalWinnings = totalWinnings;
           message = `<span class="nogain">You lost! <b>👎</b> Better luck next time.</span>`;
-          isReward = 0;
           showThumbsDown();
           fadeScreen();
           playLossSound();
@@ -1522,24 +1439,23 @@
           combo = noGainCombos[Math.floor(Math.random()*noGainCombos.length)];
           wallet += betAmount; // Refund
           message = `<span class="nogain">No gain, no loss. Your bet is returned.</span>`;
-          isReward = 0;
       }
       renderReels(combo);
 
       if (betShape && combo.includes(betShape)) shapeWin = true;
-        document.getElementById('gameMessage').innerHTML = message;
+      document.getElementById('gameMessage').innerHTML = message;
 
       let spinEnd = Date.now();
-      participant.trials.push({
+      participantData.trials.push({
         trial: trialNum+1,
         bet: betAmount,
         betShape: betShape,
         shapeWin: shapeWin,
-        combo: combo.join(''),
+        combo: combo.join(','),
         outcome: outcome,
         loss: outcome === "loss" ? betAmount : 0,
-        totalWinnings: totalWinnings,
-        wallet: wallet,
+        totalWinningsAfterTrial: totalWinnings,
+        walletAfterTrial: wallet,
         spinStartTimestamp: spinStart,
         spinEndTimestamp: spinEnd
       });
@@ -1558,13 +1474,10 @@
             console.log("Counterconditioning Task End UNIX Timestamp:", endTimestamp);
             
             document.getElementById('gameLayout').classList.add('hidden');
-            const tsDiv = document.getElementById('timestamps');
-            tsDiv.style.display = 'inline-block';
-            tsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br><b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
             document.getElementById('thankYou').classList.remove('hidden');
 
-            // >>> ADVANCE FLOW <<<
-            try { parent.postMessage({type:'taskComplete', task:5}, '*'); } catch(e) {}
+            const taskData = { startTimestamp, endTimestamp, ...participantData };
+            try { parent.postMessage({type:'taskComplete', task:5, data: taskData }, '*'); } catch(e) {}
         }, 1600);
       }
     }, 1100);
@@ -1583,10 +1496,9 @@
     <style>
       body { font-family: Arial, sans-serif; background: #2a3a5c; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
       .container { background: #19335c; padding: 2em 3em; border-radius: 16px; box-shadow: 0 4px 32px rgba(0,0,0,0.2); text-align: center; }
-      .timer { font-size: 2em; margin: 1em 0; letter-spacing: 0.1em; color: #ff6347; /* Tomato color for stress */ }
+      .timer { font-size: 2em; margin: 1em 0; letter-spacing: 0.1em; color: #ff6347; }
       button { padding: 0.7em 2.2em; font-size: 1.2em; background: #ff6347; color: #19335c; border: none; border-radius: 8px; cursor: pointer; margin-top: 1em; font-weight: bold; transition: background 0.2s; }
       button:disabled { background: #aaa; color: #666; cursor: default; }
-      .timestamps { margin-top: 1.5em; color: #ff6347; font-size: 1.1em; background: #2a3a5c; border-radius: 10px; padding: 0.7em 1.2em; display: inline-block; }
     </style>
   </head>
   <body>
@@ -1605,13 +1517,11 @@
       <div id="doneMsg" style="display:none; margin-top:1em;">
         <b>Task complete! You may remove your hand. The next task will begin shortly.</b>
       </div>
-      <div id="timestamps" class="timestamps" style="display:none"></div>
     </div>
     <script>
       let timerDisplay = document.getElementById('timer');
       let startBtn = document.getElementById('startBtn');
       let doneMsg = document.getElementById('doneMsg');
-      let timestampsDiv = document.getElementById('timestamps');
       let interval;
       let duration = 2 * 60; // 2 minutes
       let timeLeft = duration;
@@ -1622,11 +1532,6 @@
         let min = String(Math.floor(timeLeft / 60)).padStart(2, '0');
         let sec = String(timeLeft % 60).padStart(2, '0');
         timerDisplay.textContent = `${min}:${sec}`;
-      }
-
-      function showTimestamps() {
-        timestampsDiv.style.display = 'inline-block';
-        timestampsDiv.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br><b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       function startTask() {
@@ -1644,13 +1549,11 @@
             endTimestamp = Date.now();
             console.log("Cold Pressor Task End UNIX Timestamp:", endTimestamp);
             doneMsg.style.display = 'block';
-            showTimestamps();
             startBtn.disabled = true;
             
-            // Advance main flow after a short delay
+            const taskData = { startTimestamp, endTimestamp };
             setTimeout(() => {
-              // This task is at index 6 in the new array
-              try { parent.postMessage({type:'taskComplete', task:6}, '*'); } catch(e) {}
+              try { parent.postMessage({type:'taskComplete', task:6, data: taskData }, '*'); } catch(e) {}
             }, 2000);
           }
         }, 1000);
@@ -1685,15 +1588,6 @@
       .probe-btn { border: 2px solid #888; background: #222; border-radius: 8px; padding: 8px; cursor: pointer; width: 56px; height: 56px; }
       .probe-btn.selected { border: 2px solid #0f0; }
       button { padding: 8px 18px; border-radius: 6px; border: none; background: #0a8; color: #fff; font-weight: bold; cursor: pointer; }
-      .timestamps {
-        margin-top: 1.5em;
-        color: #ffd700;
-        font-size: 1.1em;
-        background: #0f3460;
-        border-radius: 10px;
-        padding: 0.7em 1.2em;
-        display: inline-block;
-      }
     </style>
   </head>
   <body>
@@ -1751,8 +1645,7 @@
 
     <div id="thankYou" class="form-block hidden">
       <h2>Thank you for participating!</h2>
-      <div>Your responses have been recorded and your data file is downloading.</div>
-      <div id="timestamps" class="timestamps" style="display:none"></div>
+      <div>Your responses have been recorded.</div>
     </div>
 
   <script>
@@ -1771,43 +1664,34 @@
   const winningCombos = [['sphere','sphere','sphere'], ['pyramid','pyramid','pyramid']];
   const nogainCombos = [['cube','cube','cube'], ['cylinder','cylinder','cylinder']];
 
-  let participant = {
+  let participantData = {
     participantId: '', sessionId: '', groupNumber: '',
     affective: {}, memory: {}, contingency: {}, probe: [],
     timestamps: {}
   };
 
   // --- TIMESTAMP LOGIC ---
-  let startTimestamp = Date.now();
-  let endTimestamp = null;
-  console.log("Questionnaire Task Start UNIX Timestamp:", startTimestamp);
-  participant.timestamps.taskStart = startTimestamp;
-
-  function showTimestamps() {
-    let box = document.getElementById('timestamps');
-    box.style.display = 'inline-block';
-    box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${participant.timestamps.taskStart}<br>
-                                 <b>Task End UNIX Timestamp:</b> ${participant.timestamps.taskEnd}`;
-  }
+  participantData.timestamps.taskStart = Date.now();
+  console.log("Questionnaire Task Start UNIX Timestamp:", participantData.timestamps.taskStart);
 
   // --- Participant Info ---
   document.getElementById('participantForm').onsubmit = function(e) {
     e.preventDefault();
-    participant.participantId = document.getElementById('participantId').value.trim();
-    participant.sessionId = document.getElementById('sessionId').value.trim();
-    participant.groupNumber = document.getElementById('groupNumber').value;
+    participantData.participantId = document.getElementById('participantId').value.trim();
+    participantData.sessionId = document.getElementById('sessionId').value.trim();
+    participantData.groupNumber = document.getElementById('groupNumber').value;
     document.getElementById('participantForm').classList.add('hidden');
     document.getElementById('affectiveForm').classList.remove('hidden');
-    participant.timestamps.affectiveStart = Date.now();
+    participantData.timestamps.affectiveStart = Date.now();
   };
 
   // --- Affective Scale ---
   document.getElementById('affectiveForm').onsubmit = function(e) {
     e.preventDefault();
-    participant.affective.valence = Number(document.getElementById('valenceSlider').value);
-    participant.affective.arousal = Number(document.getElementById('arousalSlider').value);
-    participant.timestamps.affectiveEnd = Date.now();
-    participant.affective.reactionTime = participant.timestamps.affectiveEnd - participant.timestamps.affectiveStart;
+    participantData.affective.valence = Number(document.getElementById('valenceSlider').value);
+    participantData.affective.arousal = Number(document.getElementById('arousalSlider').value);
+    participantData.timestamps.affectiveEnd = Date.now();
+    participantData.affective.reactionTime = participantData.timestamps.affectiveEnd - participantData.timestamps.affectiveStart;
     document.getElementById('affectiveForm').classList.add('hidden');
     showMemoryForm();
   };
@@ -1816,7 +1700,7 @@
     document.getElementById('memoryForm').classList.remove('hidden');
     renderSymbolsList('memorySymbolsList', 'memory');
     renderSymbolsList('contingencySymbolsList', 'contingency');
-    participant.timestamps.memoryStart = Date.now();
+    participantData.timestamps.memoryStart = Date.now();
   }
 
   function renderSymbolsList(divId, type) {
@@ -1838,16 +1722,16 @@
     e.preventDefault();
     const memDivs = document.getElementById('memorySymbolsList').querySelectorAll('.symbol-opt.selected');
     const memResponses = Array.from(memDivs).map(div => div.dataset.symbol);
-    participant.memory.responses = memResponses;
-    participant.memory.scores = memResponses.map(sym => allSymbols.includes(sym) ? 1 : 0);
+    participantData.memory.responses = memResponses;
+    participantData.memory.scores = memResponses.map(sym => allSymbols.includes(sym) ? 1 : 0);
     
     const contDivs = document.getElementById('contingencySymbolsList').querySelectorAll('.symbol-opt.selected');
     const contResponses = Array.from(contDivs).map(div => div.dataset.symbol);
-    participant.contingency.responses = contResponses;
-    participant.contingency.scores = contResponses.map(sym => rewardSymbols.includes(sym) ? 1 : 0);
+    participantData.contingency.responses = contResponses;
+    participantData.contingency.scores = contResponses.map(sym => rewardSymbols.includes(sym) ? 1 : 0);
 
-    participant.timestamps.memoryEnd = Date.now();
-    participant.memory.reactionTime = participant.timestamps.memoryEnd - participant.timestamps.memoryStart;
+    participantData.timestamps.memoryEnd = Date.now();
+    participantData.memory.reactionTime = participantData.timestamps.memoryEnd - participantData.timestamps.memoryStart;
     
     document.getElementById('memoryForm').classList.add('hidden');
     showProbeTask();
@@ -1863,7 +1747,7 @@
       });
     });
     let probeIndex = 0;
-    participant.probe = [];
+    participantData.probe = [];
     const probeDiv = document.getElementById('probePairs');
     
     function renderProbe() {
@@ -1899,7 +1783,7 @@
     
     function recordProbe(a,b,choice, probeStart) {
       let isReward = rewardSymbols.includes(choice) ? 1 : 0;
-      participant.probe.push({
+      participantData.probe.push({
         pair: [a,b],
         choice: choice,
         isReward: isReward,
@@ -1909,32 +1793,21 @@
       renderProbe();
     }
     
-    participant.timestamps.probeStart = Date.now();
+    participantData.timestamps.probeStart = Date.now();
     renderProbe();
   }
 
-  // --- Finish: Download Data and Signal Completion ---
+  // --- Finish: Send Data and Signal Completion ---
   function finishExperiment() {
     document.getElementById('probeTask').classList.add('hidden');
     document.getElementById('thankYou').classList.remove('hidden');
     
-    endTimestamp = Date.now();
-    participant.timestamps.probeEnd = endTimestamp;
-    participant.timestamps.taskEnd = endTimestamp;
-    console.log("Questionnaire Task End UNIX Timestamp:", endTimestamp);
-    showTimestamps();
+    participantData.timestamps.probeEnd = Date.now();
+    participantData.timestamps.taskEnd = Date.now();
+    console.log("Questionnaire Task End UNIX Timestamp:", participantData.timestamps.taskEnd);
+    console.log('Final Questionnaire Data:', participantData);
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(participant, null, 2));
-    const dlAnchor = document.createElement('a');
-    dlAnchor.setAttribute("href", dataStr);
-    dlAnchor.setAttribute("download", `questionnaire_data_${participant.participantId}.json`);
-    document.body.appendChild(dlAnchor);
-    dlAnchor.click();
-    dlAnchor.remove();
-    console.log('Participant Data:', participant);
-
-    // >>> ADVANCE FLOW <<<
-    try { parent.postMessage({type:'taskComplete', task:7}, '*'); } catch(e) {}
+    try { parent.postMessage({type:'taskComplete', task:7, data: participantData}, '*'); } catch(e) {}
   }
   </script>
   </body>
@@ -1947,20 +1820,34 @@
     const tasks = [
       { id: 'task0-html', label: '0. BASELINE RECORDING' },
       { id: 'task1-html', label: '1. MEMORY RETRIEVAL TASK' },
-      { id: 'task2-html', label: '2. DIGIT CANCELLATION TASK' },
+      { id: 'task2-html', label: '2. DIGIT CANCELLATION & WORD FRAGMENT' },
       { id: 'task3-html', label: '3. PNS TASK (6 BPM Breathing)' },
       { id: 'task4-html', label: '4. TRAIL MAKING TASK' },
       { id: 'task5-html', label: '5. COUNTERCONDITIONING TASK' },
-      { id: 'task6-html', label: '6. SNS TASK (Cold Pressor Test)' }, // <-- NEW TASK ADDED
-      { id: 'task7-html', label: '7. POST-GAME QUESTIONNAIRE' } // <-- RE-NUMBERED
+      { id: 'task6-html', label: '6. SNS TASK (Cold Pressor Test)' },
+      { id: 'task7-html', label: '7. POST-GAME QUESTIONNAIRE' }
     ];
 
     const frame = document.getElementById('stage');
     const startBtn = document.getElementById('startBtn');
+    const downloadBtn = document.getElementById('downloadBtn');
     const status = document.getElementById('status');
     const bar = document.getElementById('bar');
 
     let idx = -1;
+    let experimentData = {};
+
+    function downloadFullData() {
+        console.log('Final Experiment Data:', experimentData);
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(experimentData, null, 2));
+        const dlAnchor = document.createElement('a');
+        const participantId = experimentData.task7?.participantId || 'UNKNOWN_ID';
+        dlAnchor.setAttribute("href", dataStr);
+        dlAnchor.setAttribute("download", `full_experiment_data_${participantId}.json`);
+        document.body.appendChild(dlAnchor);
+        dlAnchor.click();
+        dlAnchor.remove();
+    }
 
     function loadTask(i) {
       const t = tasks[i];
@@ -1976,7 +1863,7 @@
       if (idx < tasks.length) {
         loadTask(idx);
       } else {
-        status.innerHTML = `<b>All tasks completed.</b> You may close this window.`;
+        status.innerHTML = `<b>All tasks completed.</b> Downloading final data file.`;
         bar.style.width = '100%';
         frame.srcdoc = `<html><body style="display:grid;place-items:center;min-height:80vh;background:#0b1020;color:#e5e7eb;font-family:system-ui,Segoe UI,Arial">
           <div style="text-align:center">
@@ -1984,13 +1871,17 @@
             <p>Thank you for your participation!</p>
           </div>
         </body></html>`;
+        startBtn.disabled = true;
+        downloadBtn.disabled = true;
+        downloadFullData();
       }
     }
 
     window.addEventListener('message', (ev) => {
       if (ev && ev.data && ev.data.type === 'taskComplete') {
-        // small delay for visual continuity
-        setTimeout(() => nextTask(), 400);
+        console.log(`Task ${ev.data.task} complete. Data received:`, ev.data.data);
+        experimentData['task' + ev.data.task] = ev.data.data; // Store data
+        setTimeout(() => nextTask(), 400); // small delay for visual continuity
       }
     });
 
@@ -1998,6 +1889,9 @@
       startBtn.disabled = true;
       nextTask();
     });
+
+    downloadBtn.addEventListener('click', downloadFullData);
+
   </script>
 </body>
 </html>
