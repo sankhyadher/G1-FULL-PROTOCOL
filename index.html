@@ -314,11 +314,13 @@
   let leaderboard = [];
 
   // --- Timestamp Variables ---
-  let startTimestamp = Date.now();
+  let startTimestamp = null;
   let endTimestamp = null;
-  console.log("Task 1 Start UNIX Timestamp:", startTimestamp);
 
   function startGame() {
+    startTimestamp = Date.now();
+    console.log("Task 1 (Retrieval) Start UNIX Timestamp:", startTimestamp);
+
     trialNum = 0;
     leaderboard = [
       {name: "You", score: 100}
@@ -411,7 +413,7 @@
       } else {
         setTimeout(() => {
           endTimestamp = Date.now();
-          console.log("Task 1 End UNIX Timestamp:", endTimestamp);
+          console.log("Task 1 (Retrieval) End UNIX Timestamp:", endTimestamp);
           document.getElementById('gameLayout').style.display = 'none';
           document.getElementById('thankYou').style.display = '';
           // Show timestamps on thank you screen
@@ -491,7 +493,7 @@
 
     <script>
       // --- TIMESTAMPS ---
-      let startTimestamp = Date.now(), endTimestamp = null, wordStart = null, wordEnd = null;
+      let startTimestamp = null, endTimestamp = null, wordStart = null, wordEnd = null;
 
       // --- Digit Cancellation Variables ---
       const TOTAL_TIME = 5 * 60; // 5 minutes in seconds
@@ -564,10 +566,13 @@
           `Task complete! You found ${foundTotal} out of ${targetTotal} target digits.`;
         document.getElementById('grid').innerHTML = '';
         endTimestamp = Date.now();
+        console.log("Digit Cancellation Part End UNIX Timestamp:", endTimestamp);
         setTimeout(startWordFragmentTask, 1200);
       }
 
       function startTask() {
+        startTimestamp = Date.now();
+        console.log("Task 2 (Digit/Word) Start UNIX Timestamp:", startTimestamp);
         updateTimer();
         timerInterval = setInterval(() => {
           timeLeft--;
@@ -629,6 +634,7 @@
         document.getElementById('progress').style.display = 'none';
         document.getElementById('wordTask').style.display = 'block';
         wordStart = Date.now();
+        console.log("Word Fragment Part Start UNIX Timestamp:", wordStart);
         wordTimeLeft = FRAG_COUNT * FRAG_TIME;
         fragmentIdx = 0; responses = [];
         showFragment(fragmentIdx);
@@ -648,6 +654,7 @@
         clearInterval(fragmentInterval);
         submitCurrentWord();
         wordEnd = Date.now();
+        console.log("Task 2 (Digit/Word) End UNIX Timestamp:", wordEnd);
         document.getElementById('fragmentBox').innerHTML = '';
         document.getElementById('completionInput').style.display = 'none';
         document.getElementById('submitWord').style.display = 'none';
@@ -781,7 +788,7 @@
       const audio = document.querySelector('audio');
 
       // --- timings ---
-      const sessionLength = 600;   // 10 minutes
+      const sessionLength = 600;    // 10 minutes
       const breathCycle = 10;     // 5s inhale + 5s exhale
       let interval, timerInterval, timeLeft = sessionLength;
 
@@ -947,15 +954,14 @@
 
     <script>
       // --- TIMESTAMP LOGIC ---
-      let startTimestamp = Date.now();
+      let startTimestamp = null;
       let endTimestamp = null;
-      console.log("Trail Making Task Start UNIX Timestamp:", startTimestamp);
 
       function showTimestamps() {
         let box = document.getElementById('timestamps');
         box.style.display = 'inline-block';
         box.innerHTML = `<b>Task Start UNIX Timestamp:</b> ${startTimestamp}<br>
-                               <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
+                                 <b>Task End UNIX Timestamp:</b> ${endTimestamp}`;
       }
 
       // --- TRAIL DEFINITIONS ---
@@ -1024,8 +1030,7 @@
       let currentTrail = 0;
       let allTimes = Array(trailTypes.length).fill(null);
       let started = false, startTime, timerInterval;
-      let totalStartTime = Date.now();
-      let totalTimerInterval;
+      let totalStartTime, totalTimerInterval;
       let timeUp = false;
       let sequence = [];
       let next = 0;
@@ -1063,6 +1068,13 @@
       }
 
       function startTrail() {
+        if (startTimestamp === null) {
+            startTimestamp = Date.now();
+            console.log("Trail Making Task Start UNIX Timestamp:", startTimestamp);
+            totalStartTime = startTimestamp;
+            totalTimerInterval = setInterval(updateTotalTimer, 250);
+            updateTotalTimer();
+        }
         document.getElementById('instructions').innerHTML = `
           <b>Trail ${currentTrail+1} of ${trailTypes.length}: ${trailTypes[currentTrail].label}</b><br>
           ${trailTypes[currentTrail].instructions}
@@ -1169,8 +1181,6 @@
 
       // --- INIT ---
       startNextTrail();
-      totalTimerInterval = setInterval(updateTotalTimer, 250);
-      updateTotalTimer();
       // Expose startTrail for button
       window.startTrail = startTrail;
     </script>
