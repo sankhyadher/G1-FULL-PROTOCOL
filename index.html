@@ -48,6 +48,7 @@
         <div class="progress"><div id="bar" class="bar"></div></div>
         <div id="status" class="status">Ready. Click “Start Flow” to begin with the <b>Baseline Recording</b>.</div>
         <button id="downloadBtn" class="btn" style="background: #6b7280;">Download Data</button>
+        <button id="skipBtn" class="btn" style="background: #f97316;" disabled>Skip Current Task</button>
         <button id="startBtn" class="btn">Start Flow</button>
       </div>
     </div>
@@ -898,7 +899,7 @@
   <body>
     <h1>Trail Making Task</h1>
     <div id="instructions"></div>
-    <div id="total-timer">Total Time Left: 05:00</div>
+    <div id="total-timer">Total Time Left: 10:00</div>
     <div id="timer">Round Time: 0.00 s</div>
     <div id="grid"></div>
     <div id="result"></div>
@@ -973,7 +974,7 @@
       ];
 
       // --- STATE ---
-      const TOTAL_PLAYTIME = 05 * 60 * 1000; // 10 minutes in ms
+      const TOTAL_PLAYTIME = 10 * 60 * 1000; // 10 minutes in ms
       let currentTrail = 0;
       let started = false, startTime, timerInterval;
       let totalStartTime, totalTimerInterval;
@@ -1270,7 +1271,14 @@
     'cylinder': `<svg width="80" height="80" viewBox="0 0 80 80"><defs><linearGradient id="g4" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#fff"/><stop offset="100%" stop-color="#3a6"/></linearGradient></defs><ellipse cx="40" cy="20" rx="24" ry="10" fill="#fff" opacity="0.5"/><rect x="16" y="20" width="48" height="40" rx="24" fill="url(#g4)" stroke="#2a7c5c" stroke-width="4"/><ellipse cx="40" cy="60" rx="24" ry="10" fill="#3a6" stroke="#2a7c5c" stroke-width="4"/></svg>`
   };
   const allSymbols = ['sphere', 'cube', 'pyramid', 'cylinder'];
-  const noGainCombos = [['cube','cube','cube'], ['cylinder','cylinder','cylinder']];
+  const noGainCombos = [
+    ['cube', 'cube', 'cylinder'],
+    ['cube', 'cylinder', 'cube'],
+    ['cylinder', 'cube', 'cube'],
+    ['cylinder', 'cylinder', 'cube'],
+    ['cylinder', 'cube', 'cylinder'],
+    ['cube', 'cylinder', 'cylinder']
+  ];
   const lossSymbols = ['sphere', 'pyramid'];
   const TOTAL_TRIALS = 50;
 
@@ -1342,7 +1350,7 @@
   }
   function updateGameUI() {
     document.getElementById('trialInfo').innerHTML = `<b>Trial ${trialNum+1} of 50</b>`;
-    renderReels(['sphere','cube','pyramid']);
+    renderReels(['sphere','cube','cylinder']);
     document.getElementById('gameMessage').innerHTML = '';
     document.getElementById('spinBtn').disabled = false;
     document.getElementById('totalWinnings').innerText = `Total Winnings: $${totalWinnings}`;
@@ -1831,6 +1839,7 @@
     const frame = document.getElementById('stage');
     const startBtn = document.getElementById('startBtn');
     const downloadBtn = document.getElementById('downloadBtn');
+    const skipBtn = document.getElementById('skipBtn');
     const status = document.getElementById('status');
     const bar = document.getElementById('bar');
 
@@ -1849,6 +1858,17 @@
         dlAnchor.remove();
     }
 
+    function skipTask() {
+        if (idx > -1 && idx < tasks.length) {
+            console.log(`Task ${idx} skipped by user.`);
+            experimentData['task' + idx] = {
+                status: 'skipped',
+                skippedAt: Date.now()
+            };
+            nextTask();
+        }
+    }
+
     function loadTask(i) {
       const t = tasks[i];
       const tpl = document.getElementById(t.id);
@@ -1856,6 +1876,7 @@
       frame.srcdoc = html;
       status.innerHTML = `Running <b>${t.label}</b> (${i+1} / ${tasks.length})`;
       bar.style.width = `${(i) / tasks.length * 100}%`;
+      skipBtn.disabled = false;
     }
 
     function nextTask() {
@@ -1873,6 +1894,7 @@
         </body></html>`;
         startBtn.disabled = true;
         downloadBtn.disabled = true;
+        skipBtn.disabled = true;
         downloadFullData();
       }
     }
@@ -1891,7 +1913,9 @@
     });
 
     downloadBtn.addEventListener('click', downloadFullData);
+    skipBtn.addEventListener('click', skipTask);
 
   </script>
 </body>
 </html>
+
