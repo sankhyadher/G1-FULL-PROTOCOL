@@ -196,6 +196,7 @@
         border: 4px solid #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.3rem; cursor: pointer; transition: border 0.2s, box-shadow 0.2s;
         box-shadow: 0 2px 10px #000a;
         margin: 0 2px;
+        color: #3b1e00; /* <<< CHANGE 1a: Dark color for chip text */
       }
       .chip.selected { border: 4px solid #ff3; box-shadow: 0 0 16px #fff700; }
       .shape-chip svg { width: 40px; height: 40px; }
@@ -234,7 +235,7 @@
     <div class="instructions" id="instructions">
       <h2>Slot Machine Game Instructions</h2>
       <ul>
-                <li>You will play <b>10 rounds</b>. In each round, place your bet using casino chips, and choose a shape to bet on.</li>
+            <li>You will play <b>10 rounds</b>. In each round, place your bet using casino chips, and choose a shape to bet on.</li>
         <li><b>Higher the bet, higher the risk and potential reward.</b></li>
         <li>Try to climb the leaderboard by winning more!</li>
         <li>Press the <b>SPIN</b> button to play each round.</li>
@@ -451,26 +452,43 @@
     </style>
   </head>
   <body>
-    <h1 id="mainTitle">Digit Cancellation Task (5 Minutes)</h1>
-    <div id="instructions">
-      In each grid, click all instances of the digit <b id="targetDigit"></b>.<br>
-      A new grid will appear every 30 seconds!
+  
+    <div id="mainInstructions">
+      <h2>Task Instructions</h2>
+      <p style="max-width: 600px; margin: 20px auto; text-align: left; line-height: 1.6;">
+        You are about to begin two short tasks:
+        <br><br>
+        <b>1. Digit Cancellation:</b> You will be shown several grids of numbers. Your task is to click on all instances of a specific "target" digit (e.g., "click all 7s"). You will have 30 seconds for each grid.
+        <br><br>
+        <b>2. Word Fragment Completion:</b> After the digit task, you will be shown word fragments (e.g., "C_M__"). Please type the first complete word that comes to your mind.
+        <br><br>
+        Click <b>Start</b> when you are ready to begin the Digit Cancellation task.
+      </p>
+      <button id="startMainTaskBtn" style="font-size: 1.2em; padding: 10px 20px; cursor: pointer;">Start</button>
     </div>
-    <div id="timer">Time left: 05:00</div>
-    <div id="progress"></div>
-    <div id="grid"></div>
-    <div id="result"></div>
 
-    <div id="wordTask" style="display:none;">
-      <div id="fragmentInstructions" style="margin: 20px;">
-        Complete the word fragment in each box with the first valid word that comes to your mind.<br>
+    <div id="taskContainer" style="display:none;">
+      <h1 id="mainTitle">Digit Cancellation Task (5 Minutes)</h1>
+      <div id="instructions">
+        In each grid, click all instances of the digit <b id="targetDigit"></b>.<br>
+        A new grid will appear every 30 seconds!
       </div>
-      <div id="timerWord">Time left: 05:00</div>
-      <div id="wordProgress"></div>
-      <div id="fragmentBox"></div>
-      <input type="text" id="completionInput" maxlength="16" autocomplete="off">
-      <button id="submitWord">Submit</button>
-      <div id="wordResult"></div>
+      <div id="timer">Time left: 05:00</div>
+      <div id="progress"></div>
+      <div id="grid"></div>
+      <div id="result"></div>
+
+      <div id="wordTask" style="display:none;">
+        <div id="fragmentInstructions" style="margin: 20px;">
+          Complete the word fragment in each box with the first valid word that comes to your mind.<br>
+        </div>
+        <div id="timerWord">Time left: 05:00</div>
+        <div id="wordProgress"></div>
+        <div id="fragmentBox"></div>
+        <input type="text" id="completionInput" maxlength="16" autocomplete="off">
+        <button id="submitWord">Submit</button>
+        <div id="wordResult"></div>
+      </div>
     </div>
 
     <script>
@@ -654,7 +672,14 @@
         if (e.key === 'Enter') submitCurrentWord();
       });
 
-      window.onload = startTask;
+      // window.onload = startTask; // <-- CHANGE 3a: Removed old onload
+      
+      // CHANGE 3a: Added new start logic
+      document.getElementById('startMainTaskBtn').onclick = function() {
+        document.getElementById('mainInstructions').style.display = 'none';
+        document.getElementById('taskContainer').style.display = 'block';
+        startTask(); // This is the original starting function
+      };
     </script>
   </body>
   </html>
@@ -759,8 +784,8 @@
       const audio = document.querySelector('audio');
 
       // --- timings ---
-      const sessionLength = 600;    // 10 minutes
-      const breathCycle = 10;     // 5s inhale + 5s exhale
+      const sessionLength = 600;     // 10 minutes
+      const breathCycle = 10;      // 5s inhale + 5s exhale
       let interval, timerInterval, timeLeft = sessionLength;
 
       function updateTimer(){
@@ -897,14 +922,33 @@
     </style>
   </head>
   <body>
-    <h1>Trail Making Task</h1>
-    <div id="instructions"></div>
-    <div id="total-timer">Total Time Left: 05:00</div>
-    <div id="timer">Round Time: 0.00 s</div>
-    <div id="grid"></div>
-    <div id="result"></div>
-    <div id="history"></div>
-    <div id="end-message"></div>
+  
+    <div id="mainInstructions">
+        <h2>Trail Making Task Instructions</h2>
+        <p style="max-width: 600px; margin: 20px auto; text-align: left; line-height: 1.6;">
+            You are about to begin the <b>Trail Making Task</b>.
+            <br><br>
+            You will be presented with a series of 10 different "trails."
+            <br><br>
+            For each trail, you will see 25 circles on the screen. Your task is to click them in a specific order as fast as you can.
+            <br><br>
+            The instructions for each trail (e.g., "Click numbers 1-25" or "Click 1-A-2-B...") will be shown before it begins.
+            <br><br>
+            Click <b>Start</b> when you are ready to see the instructions for the first trail.
+        </p>
+        <button id="startMainTaskBtn" style="font-size: 1.1rem; padding: 8px 28px; cursor: pointer; background: #77f; color: #fff; border: none; border-radius: 8px;">Start</button>
+    </div>
+
+    <div id="taskContainer" style="display:none;">
+      <h1>Trail Making Task</h1>
+      <div id="instructions"></div>
+      <div id="total-timer">Total Time Left: 05:00</div>
+      <div id="timer">Round Time: 0.00 s</div>
+      <div id="grid"></div>
+      <div id="result"></div>
+      <div id="history"></div>
+      <div id="end-message"></div>
+    </div>
 
     <script>
       // --- TIMESTAMP & DATA LOGIC ---
@@ -1120,7 +1164,14 @@
       }
 
       // --- INIT ---
-      startNextTrail();
+      // startNextTrail(); // <-- CHANGE 3b: Removed old init
+      
+      // CHANGE 3b: Added new start logic
+      document.getElementById('startMainTaskBtn').onclick = function() {
+        document.getElementById('mainInstructions').style.display = 'none';
+        document.getElementById('taskContainer').style.display = 'block';
+        startNextTrail(); // This is the original starting function
+      };
       window.startTrail = startTrail;
     </script>
   </body>
@@ -1160,6 +1211,7 @@
         box-shadow: 0 2px 10px #000a;
         position: relative;
         margin: 0 2px;
+        color: #3b1e00; /* <<< CHANGE 1b: Dark color for chip text */
       }
       .chip.selected { border: 4px solid #ff3; box-shadow: 0 0 16px #fff700; }
       .shape-chip svg { width: 40px; height: 40px; }
@@ -1433,7 +1485,8 @@
           outcome = 'loss';
           let possible = [];
           for(let a of lossSymbols) for(let b of lossSymbols) for(let c of lossSymbols)
-            if (!(a==='cube'&&b==='cube'&&c==='cube') && !(a==='cylinder'&&b==='cylinder'&&c==='cylinder'))
+            // <<< CHANGE 2: Only add combinations that are NOT all the same
+            if (!(a === b && b === c)) 
               possible.push([a,b,c]);
           combo = possible[Math.floor(Math.random()*possible.length)];
           totalWinnings -= betAmount;
@@ -1827,11 +1880,11 @@
     // Runner orchestrator
     const tasks = [
       { id: 'task0-html', label: '0. BASELINE RECORDING' },
-      { id: 'task1-html', label: '1. MEMORY RETRIEVAL TASK' },
+      { id: 'task1-html', label: '1. TASK 1' },
       { id: 'task2-html', label: '2. DIGIT CANCELLATION & WORD FRAGMENT' },
       { id: 'task3-html', label: '3. PNS TASK (6 BPM Breathing)' },
       { id: 'task4-html', label: '4. TRAIL MAKING TASK' },
-      { id: 'task5-html', label: '5. COUNTERCONDITIONING TASK' },
+      { id: 'task5-html', label: '5. TASK 5' },
       { id: 'task6-html', label: '6. SNS TASK (Cold Pressor Test)' },
       { id: 'task7-html', label: '7. POST-GAME QUESTIONNAIRE' }
     ];
@@ -1918,4 +1971,3 @@
   </script>
 </body>
 </html>
-
